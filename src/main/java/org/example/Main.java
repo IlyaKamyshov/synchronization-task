@@ -14,6 +14,25 @@ public class Main {
 
     public static void main(String[] args) {
 
+        Thread maxCounter = new Thread(() -> {
+            while (!Thread.interrupted()) {
+                synchronized (sizeToFreq) {
+                    try {
+                        sizeToFreq.wait();
+                        Map.Entry<Integer, Integer> max = sizeToFreq
+                                .entrySet()
+                                .stream()
+                                .max(Map.Entry.comparingByValue())
+                                .get();
+                        System.out.println("Текущий лидер: " + max.getKey() + " (встретился " + max.getValue() + " раз)");
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }
+        });
+        maxCounter.start();
+
         for (int i = 0; i < THREAD_COUNT; i++) {
             new Thread(() -> {
                 String route = generateRoute(LETTERS, ROUTE_LENGTH);
@@ -24,9 +43,12 @@ public class Main {
                     } else {
                         sizeToFreq.put(count, 1);
                     }
+                    sizeToFreq.notify();
                 }
             }).start();
         }
+
+        maxCounter.interrupt();
 
         Map.Entry<Integer, Integer> max = sizeToFreq
                 .entrySet()
